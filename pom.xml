@@ -6,7 +6,7 @@
   <artifactId>geodroid-server</artifactId>
   <name>GeoDroid Server</name>
   <version>0-SNAPSHOT</version>
-  <packaging>pom</packaging>
+  <packaging>apk</packaging>
 
   <repositories>
     <repository>
@@ -28,7 +28,7 @@
     <dependency>
       <groupId>org.opengeo</groupId>
       <artifactId>geodroid</artifactId>
-      <version>${geodroid.version}</version>
+      <version>0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>com.google.android</groupId>
@@ -45,13 +45,67 @@
   </dependencies>
   
   <build>
+    <finalName>${project.artifactId}</finalName>
     <resources>
         <resource>
             <directory>gen</directory>
         </resource>
     </resources>
     <sourceDirectory>src</sourceDirectory>
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>com.jayway.maven.plugins.android.generation2</groupId>
+                <artifactId>android-maven-plugin</artifactId>
+                <version>3.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <sign>
+                        <debug>false</debug>
+                    </sign>
+                </configuration>
+            </plugin>
+            <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+            <plugin>
+            	<groupId>org.eclipse.m2e</groupId>
+            	<artifactId>lifecycle-mapping</artifactId>
+            	<version>1.0.0</version>
+            	<configuration>
+            		<lifecycleMappingMetadata>
+            			<pluginExecutions>
+            				<pluginExecution>
+            					<pluginExecutionFilter>
+            						<groupId>
+            							org.apache.maven.plugins
+            						</groupId>
+            						<artifactId>
+            							maven-antrun-plugin
+            						</artifactId>
+            						<versionRange>[1.7,)</versionRange>
+            						<goals>
+            							<goal>run</goal>
+            						</goals>
+            					</pluginExecutionFilter>
+            					<action>
+            						<ignore></ignore>
+            					</action>
+            				</pluginExecution>
+            			</pluginExecutions>
+            		</lifecycleMappingMetadata>
+            	</configuration>
+            </plugin>
+        </plugins>
+    </pluginManagement>
     <plugins>
+        <plugin>
+            <groupId>com.jayway.maven.plugins.android.generation2</groupId>
+            <artifactId>android-maven-plugin</artifactId>
+            <configuration>
+                <sdk>
+                    <platform>${android.version}</platform>
+                </sdk>
+            </configuration>
+        </plugin>
       <!-- initialize git revision info -->
       <plugin>
         <groupId>pl.project13.maven</groupId>
@@ -69,22 +123,6 @@
           <skipPoms>false</skipPoms>
           <verbose>false</verbose>
         </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <configuration>
-          <outputDirectory>${basedir}/libs</outputDirectory>
-          <excludeScope>provided</excludeScope>
-          <includeArtifactIds>jeo-nano</includeArtifactIds>
-        </configuration>
-        <executions>
-          <execution>
-            <phase>process-resources</phase>
-            <goals>
-              <goal>copy-dependencies</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
        <artifactId>maven-antrun-plugin</artifactId>
@@ -116,37 +154,7 @@
                        <filter token="build.time" value="${git.build.time}"/>
                        <filter token="build.time.human" value="${build.prettydate}"/>
                    </filterset>
-             
                 </copy>
-              </tasks>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>clean</id>
-            <phase>clean</phase>
-            <configuration>
-              <tasks>
-                <delete file="res/raw/version"/>
-                <mkdir dir="libs"/>
-                <delete>
-                  <fileset dir="${basedir}/libs" includes="*.jar"/>
-                </delete>
-                <ant antfile="build.xml" target="clean"/>
-              </tasks>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>package</id>
-            <phase>package</phase>
-            <configuration>
-              <tasks>
-                <ant antfile="build.xml" target="${build.mode}"/>
               </tasks>
             </configuration>
             <goals>
@@ -158,33 +166,59 @@
     </plugins>
   </build>
 
-
-   <profiles>
-    <!-- profile used to get around issue with antrun plugin using jre 
-         for execution -->
-    <profile>
-      <id>tools.jar</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-antrun-plugin</artifactId>
-            <dependencies>
-              <dependency>
-                <groupId>com.sun</groupId>
-                <artifactId>tools</artifactId>
-                <version>1.5.0</version>
-                <scope>system</scope>
-                <systemPath>${java.home}/../lib/tools.jar</systemPath>
-              </dependency>
-            </dependencies>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
+  <profiles>
+      <profile>
+          <id>sign</id>
+          <build>
+              <plugins>
+                  <plugin>
+                      <groupId>org.apache.maven.plugins</groupId>
+                      <artifactId>maven-jarsigner-plugin</artifactId>
+                      <version>1.2</version>
+                      <executions>
+                          <execution>
+                              <id>signing</id>
+                              <goals>
+                                  <goal>sign</goal>
+                              </goals>
+                              <phase>package</phase>
+                              <inherited>true</inherited>
+                              <configuration>
+                                  <archiveDirectory></archiveDirectory>
+                                  <includes>
+                                      <include>target/*.apk</include>
+                                  </includes>
+                                  <keystore>path/to/keystore</keystore>
+                                  <storepass>storepasword</storepass>
+                                  <keypass>keypassword</keypass>
+                                  <alias>key-alias</alias>
+                                  <arguments>
+                                      <argument>-sigalg</argument>
+                                      <argument>MD5withRSA</argument>
+                                      <argument>-digestalg</argument>
+                                      <argument>SHA1</argument>
+                                  </arguments>
+                              </configuration>
+                          </execution>
+                      </executions>
+                  </plugin>
+                  <plugin>
+                      <groupId>com.jayway.maven.plugins.android.generation2</groupId>
+                      <artifactId>android-maven-plugin</artifactId>
+                      <inherited>true</inherited>
+                      <configuration>
+                          <sign>
+                              <debug>false</debug>
+                          </sign>
+                      </configuration>
+                  </plugin>
+              </plugins>
+          </build>
+      </profile>
   </profiles>
 
   <properties>
+    <android.version>15</android.version>
     <jeo.version>0-SNAPSHOT</jeo.version>
     <geodroid.version>0-SNAPSHOT</geodroid.version>
     <build.mode>debug</build.mode>
